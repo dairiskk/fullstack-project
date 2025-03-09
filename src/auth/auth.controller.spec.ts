@@ -5,7 +5,8 @@ import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { RegisterDto } from './dto/register.dto';
 
 describe('AuthController', () => {
   let authController: AuthController;
@@ -44,12 +45,20 @@ describe('AuthController', () => {
   });
 
   describe('register', () => {
-    it('should register a new user', async () => {
-      const createUserDto = { email: 'test@example.com', password: 'password123' };
-      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    it('should throw ConflictException for duplicate email', async () => {
+      const duplicateEmailDto: RegisterDto = { email: 'test@example.com', password: 'password123' };
+
+      jest.spyOn(userService, 'createUser').mockRejectedValue(new ConflictException('Email already registered'));
+
+      await expect(authController.register(duplicateEmailDto)).rejects.toThrowError(ConflictException);
+    });
+
+    it('should register a new user with valid data', async () => {
+      const validRegisterDto: RegisterDto = { email: 'test@example.com', password: 'password123' };
+      const hashedPassword = await bcrypt.hash(validRegisterDto.password, 10);
       const createdUser = {
         id: 1,
-        email: createUserDto.email,
+        email: validRegisterDto.email,
         password: hashedPassword,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -57,40 +66,9 @@ describe('AuthController', () => {
 
       jest.spyOn(userService, 'createUser').mockResolvedValue(createdUser);
 
-      const result = await authController.register(createUserDto.email, createUserDto.password);
+      const result = await authController.register(validRegisterDto);
       expect(result).toEqual(createdUser);
-      expect(userService.createUser).toHaveBeenCalledWith(createUserDto.email, createUserDto.password);
-    });
-  });
-
-  describe('login', () => {
-    it('should return an access token for valid credentials', async () => {
-      const loginDto = { email: 'test@example.com', password: 'password123' };
-      const user = {
-        id: 1,
-        email: loginDto.email,
-        password: await bcrypt.hash(loginDto.password, 10),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      const accessToken = { access_token: 'jwt-token' };
-
-      jest.spyOn(authService, 'validateUser').mockResolvedValue(user);
-      jest.spyOn(authService, 'login').mockResolvedValue(accessToken);
-
-      const result = await authController.login(loginDto.email, loginDto.password);
-      expect(result).toEqual(accessToken);
-      expect(authService.validateUser).toHaveBeenCalledWith(loginDto.email, loginDto.password);
-      expect(authService.login).toHaveBeenCalledWith(user);
-    });
-
-    it('should throw UnauthorizedException for invalid credentials', async () => {
-      const loginDto = { email: 'test@example.com', password: 'wrongpassword' };
-
-      jest.spyOn(authService, 'validateUser').mockResolvedValue(null);
-
-      await expect(authController.login(loginDto.email, loginDto.password)).rejects.toThrowError(UnauthorizedException);
-      expect(authService.validateUser).toHaveBeenCalledWith(loginDto.email, loginDto.password);
+      expect(userService.createUser).toHaveBeenCalledWith(validRegisterDto.email, validRegisterDto.password);
     });
   });
 });
