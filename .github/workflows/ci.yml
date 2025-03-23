@@ -1,0 +1,41 @@
+name: NestJS CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18 # Specify the Node.js version your app uses
+          cache: 'npm' # Cache npm dependencies for faster builds
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Run linting (optional)
+      - name: Run linting
+        run: npm run lint
+
+      # Run tests
+      - name: Run tests
+        run: npm run test
+
+      # Build the application
+      - name: Build application
+        run: npm run build

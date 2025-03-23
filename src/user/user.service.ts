@@ -8,7 +8,9 @@ export class UserService {
 
   async createUser(email: string, password: string) {
     // Check if the email already exists
-    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
     if (existingUser) {
       throw new ConflictException('Email already registered');
     }

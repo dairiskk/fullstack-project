@@ -5,13 +5,12 @@ import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 
 describe('AuthController', () => {
   let authController: AuthController;
-  let authService: AuthService;
-  let userService: UserService;
+  let userService: UserService; // Removed unused `authService`
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -40,21 +39,30 @@ describe('AuthController', () => {
     }).compile();
 
     authController = module.get<AuthController>(AuthController);
-    authService = module.get<AuthService>(AuthService);
-    userService = module.get<UserService>(UserService);
+    userService = module.get<UserService>(UserService); // Only keep what's needed
   });
 
   describe('register', () => {
     it('should throw ConflictException for duplicate email', async () => {
-      const duplicateEmailDto: RegisterDto = { email: 'test@example.com', password: 'password123' };
+      const duplicateEmailDto: RegisterDto = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
 
-      jest.spyOn(userService, 'createUser').mockRejectedValue(new ConflictException('Email already registered'));
+      jest
+        .spyOn(userService, 'createUser')
+        .mockRejectedValue(new ConflictException('Email already registered'));
 
-      await expect(authController.register(duplicateEmailDto)).rejects.toThrowError(ConflictException);
+      await expect(
+        authController.register(duplicateEmailDto),
+      ).rejects.toThrowError(ConflictException);
     });
 
     it('should register a new user with valid data', async () => {
-      const validRegisterDto: RegisterDto = { email: 'test@example.com', password: 'password123' };
+      const validRegisterDto: RegisterDto = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
       const hashedPassword = await bcrypt.hash(validRegisterDto.password, 10);
       const createdUser = {
         id: 1,
@@ -64,11 +72,19 @@ describe('AuthController', () => {
         updatedAt: new Date(),
       };
 
-      jest.spyOn(userService, 'createUser').mockResolvedValue(createdUser);
+      // Mock the createUser method
+      const createUserMock = jest
+        .spyOn(userService, 'createUser')
+        .mockResolvedValue(createdUser);
 
       const result = await authController.register(validRegisterDto);
+
+      // Assertions
       expect(result).toEqual(createdUser);
-      expect(userService.createUser).toHaveBeenCalledWith(validRegisterDto.email, validRegisterDto.password);
+      expect(createUserMock).toHaveBeenCalledWith(
+        validRegisterDto.email,
+        validRegisterDto.password,
+      );
     });
   });
 });

@@ -7,4 +7,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.listen(3005);
 }
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Failed to start the application:', error);
+  process.exit(1);
+});
