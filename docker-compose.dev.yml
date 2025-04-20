@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nestdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - db
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/nestdb
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        echo '🔧 [1/3] Installing dependencies (if needed)...' &&
+        npm install &&
+
+        echo '🧱 [2/3] Running Prisma migration...' &&
+        if [ ! -d ./prisma/migrations ] || [ -z \"$(ls -A ./prisma/migrations)\" ]; then
+          echo '📦 No migrations — creating and applying initial one' &&
+          npx prisma migrate dev --name init;
+        else
+          echo '📦 Migrations found — applying' &&
+          npx prisma migrate deploy;
+        fi &&
+
+        echo '🚀 [3/3] Starting NestJS...' &&
+        npm run start:dev
+      "
+
+volumes:
+  pgdata:
